@@ -1,11 +1,11 @@
-#reddit
+#Reddit
 This is a [Rust](www.rust-lang.org/) binding for the [reddit.com](http://reddit.com) API.
 
-## warning
+## Warning
 
 This is most definitely a work in progress.
 
 
-## license
+## License
 
 GNU LGPLv3

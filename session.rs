@@ -1,7 +1,7 @@
 use http::client::RequestWriter;
 use http::method::{Get, Post};
 use http::headers::content_type::MediaType;
-use std::str;
+use std::str::from_utf8;
 use std::rt::io::{Reader,Writer};
 use extra::url;
 use extra::json::{Json, from_str};
@@ -10,17 +10,73 @@ use util::json::{JsonLike};
 use util::REDDIT;
 
 #[deriving(Clone, Encodable, Decodable, Eq)]
-pub struct User {
+pub struct Session {
+    default: bool,
+    username: ~str,
+    password: Option<~str>,
     cookie: ~str,
     modhash: ~str,
-
+    settings: ~SessionSettings
 }
 
-impl User {
-    pub fn login(user: &str, pass: &str) -> Result<User, ~str> {
-        let url = url::from_str("http://www.reddit.com/api/login").unwrap();
+#[deriving(Clone, Encodable, Decodable, Eq)]
+pub struct SessionSettings {
+    delete_pass: bool,
+    auto_relogin: bool,
+}
 
-        let jpostdata = format!(r"user={0}&passwd={1}&rem=true&api_type=json", user, pass);
+impl SessionSettings {
+    pub fn new(delete_pass: bool, auto_relogin: bool) -> SessionSettings {
+        SessionSettings {
+            delete_pass: delete_pass,
+            auto_relogin: auto_relogin,
+        }
+    }
+
+    pub fn default() -> SessionSettings {
+        SessionSettings {
+            delete_pass: false,
+            auto_relogin: false,
+        }
+    }
+}
+
+
+
+
+impl Session {
+    pub fn default() -> Session {
+        Session {
+            default: true,
+            username: ~"",
+            password: None,
+            cookie: ~"",
+            modhash: ~"",
+            settings: ~SessionSettings::default(),
+        }
+    }
+
+    pub fn new(username: &str, pass: &str, settings: SessionSettings) -> Session {
+        Session {
+            default: false,
+            username: username.to_owned(),
+            password: Some(pass.to_owned()),
+            cookie: ~"",
+            modhash: ~"",
+            settings: ~settings,
+        }
+    }
+
+    pub fn login(self) -> Result<Session, ~str> {
+        if self.default {
+            return Err(~"Cannot login with default session");
+        }
+
+        let url = url::from_str(format!("{0}api/login/{1}", REDDIT, self.username)).unwrap();
+
+        let jpostdata = format!(r"user={0}&passwd={1}&rem=true&api_type=json",
+            self.username,
+            *self.password.as_ref().expect("No password!"));
 
         let mut request = ~RequestWriter::new(Post, url);
 
@@ -35,7 +91,7 @@ impl User {
             Ok(mut resp) => {
                 debug!("Status: {}", resp.status);
 
-                let body = str::from_utf8(resp.read_to_end());
+                let body = from_utf8(resp.read_to_end());
                 debug!("{}", body);
 
                 match from_str(body) {
@@ -56,9 +112,10 @@ impl User {
                                     .as_str()
                                     .unwrap()
                                     .to_owned();
-                                Ok(User {
+                                Ok(Session {
                                     cookie: cookie,
                                     modhash: mhash,
+                                    ..self
                                 })
 
                             }
@@ -81,7 +138,7 @@ impl User {
             Ok(mut resp) => {
                 debug!("Status: {}", resp.status);
 
-                let body = str::from_utf8(resp.read_to_end());
+                let body = from_utf8(resp.read_to_end());
                 debug!("{}", body);
 
                 match from_str(body) {
@@ -94,10 +151,11 @@ impl User {
         }
     }
 
-    pub fn clear_sessions(self, pass: &str, dest: &url::Url) -> Result<User, ~str> {
+    pub fn clear(self, pass: &str, dest: &url::Url) -> Result<Session, ~str> {
         let url = url::from_str(format!("{}api/clear_sessions", REDDIT)).unwrap();
 
-        let jpostdata = format!(r"dest={0}&curpass={1}&uh={2}&api_type=json", dest.to_str(), pass, self.modhash);
+        let jpostdata = format!(r"dest={0}&curpass={1}&uh={2}&api_type=json",
+            dest.to_str(), pass, self.modhash);
 
         let mut request = ~RequestWriter::new(Post, url);
         request.headers.extensions.insert(~"Cookie", self.cookie.clone());
@@ -111,24 +169,28 @@ impl User {
             Ok(mut resp) => {
                 debug!("Status: {}", resp.status);
 
-                let body = str::from_utf8(resp.read_to_end());
+                let body = from_utf8(resp.read_to_end());
                 debug!("{}", body);
 
-                match from_str(body) {
-                    Err(jerror) => Err(jerror.to_str()),
-                    Ok(json) => {
-                        let err = check_login(&json);
+                if !body.contains("all other sessions have been logged out") {
+                    Err(~"Failed to clear session.")
+                } else {
+                    match from_str(body) {
+                        Err(jerror) => Err(jerror.to_str()),
+                        Ok(json) => {
+                            let err = check_login(&json);
 
-                        match err {
-                            Err(msg) => Err(msg),
-                            Ok(()) => {
-                                let cookie = resp.headers.extensions.find(&~"Set-Cookie")
-                                    .expect("No cookie sent back")
-                                    .to_owned();
-                                Ok(User {
-                                    cookie: cookie,
-                                    modhash: self.modhash
-                                })
+                            match err {
+                                Err(msg) => Err(msg),
+                                Ok(()) => {
+                                    let cookie = resp.headers.extensions.find(&~"Set-Cookie")
+                                        .expect("No cookie sent back")
+                                        .to_owned();
+                                    Ok(Session {
+                                        cookie: cookie,
+                                        ..self
+                                    })
+                                }
                             }
                         }
                     }
@@ -155,7 +217,7 @@ fn check_login(json: &Json) -> Result<(), ~str> {
 
 #[cfg(test)]
 mod test {
-    use super::{User};
+    use super::{Session, SessionSettings};
     use util::REDDIT;
     use extra::url::from_str;
 
@@ -164,7 +226,8 @@ mod test {
         use std::path::Path;
         use std::str::from_utf8;
 
-        let mut stream = file::open(&Path::new("secrets.txt"), Open, Read).expect("Secret file couldn't be opened");
+        let mut stream = file::open(&Path::new("secrets.txt"), Open, Read)
+            .expect("Secret file couldn't be opened");
         let s = from_utf8(stream.read_to_end());
 
         let v: ~[~str] = s.split_iter(' ').map(|s| s.trim().to_owned()).collect();
@@ -179,27 +242,33 @@ mod test {
     fn test_login() {
         let (user, pass) = get_user_pass();
 
-        let cookie_s = User::login(user, pass).unwrap().cookie;
-        assert!(cookie_s.len() > 0);
+        let u = Session::new(user, pass, SessionSettings::default());
+        let u = u.login().unwrap();
+
+        println(u.cookie);
+        assert!(u.cookie.len() > 0);
     }
 
     #[test]
     fn test_get_me() {
         let (user, pass) = get_user_pass();
 
-        let user = User::login(user, pass).unwrap();
-        let user_info = user.me_json().unwrap().to_str();
+        let u = Session::new(user, pass, SessionSettings::default());
+        let u = u.login().unwrap();
+
+        let user_info = u.me_json().unwrap().to_str();
 
         assert!(user_info.len() > 0);
     }
 
     #[test]
-    fn test_clear_sessions() {
+    fn test_clear() {
         let (user, pass) = get_user_pass();
         let dest = from_str(REDDIT).unwrap();
 
-        let user = User::login(user, pass).unwrap();
-        let cookie = user.clear_sessions(pass, &dest).unwrap().cookie;
+        let u = Session::new(user, pass, SessionSettings::default());
+        let user = u.login().unwrap();
+        let cookie = user.clear(pass, &dest).unwrap().cookie;
 
         println(cookie);
         assert!(cookie.len() > 0);

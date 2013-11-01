@@ -11,7 +11,12 @@
 extern mod extra;
 extern mod http;
 
+// Import macros
+mod macros;
+
 pub mod session;
+pub mod redditor;
+
 mod util;
 
 

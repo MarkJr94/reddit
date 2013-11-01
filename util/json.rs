@@ -80,12 +80,19 @@ impl<'self> JsonLike<'self> for &'self Json {
             _ => error(self, ~"not an object")
         }
     }
+
     fn as_list(self) -> Result<&'self List, ValueError> {
         match *self {
             List(ref l) => Ok(l),
             _ => error(self, ~"not a list")
         }
     }
+
+//     fn as_null(self) -> Result<&'self Null, ValueError> {
+//         match *self {
+//             Null =>
+//         }
+//     }
 
     fn to_bool(self) -> Result<bool, ValueError> {
         match *self {
@@ -171,6 +178,12 @@ impl FromJson for f64 {
     }
 }
 
+impl FromJson for f32 {
+    fn from_json(j: &Json) -> Result<f32, ValueError> {
+        j.to_num().map_move(|n| n as f32)
+    }
+}
+
 impl FromJson for int {
     fn from_json(j: &Json) -> Result<int, ValueError> {
         do j.to_num().and_then() |i| {
@@ -194,28 +207,45 @@ impl FromJson for bool {
     }
 }
 
-/// A nice macro to define structs that are built from json objects
-macro_rules! json_struct(
-    ($name:ident, $($json_field:expr -> $field:ident: $ty:ty),+) => (
-        // Useless because there can't be 2 expressions in a macro (#4375)
-        // struct $name {
-        //     $($field: $tt)+
-        // }
+impl<T: FromJson> FromJson for Option<T> {
+    fn from_json(j: &Json) -> Result<Option<T>, ValueError> {
+        match *j {
+            Null => Ok(None),
+            otherwise => {
+                let t = FromJson::from_json(&otherwise);
 
-        // TODO : when #4375 is fixed, also implement FromStr
-
-        impl FromJson for $name {
-            fn from_json(json: &Json) -> Result<$name, ValueError> {
-                Ok($name {
-                    $($field: match(json.value(&~$json_field).convert()) {
-                                Ok(v) => v,
-                                Err(e) => return Err(e)
-                            }),+
-                })
+                match t {
+                    Ok(thing) => Ok(Some(thing)),
+                    Err(v) => Err(v)
+                }
             }
         }
-    );
-)
+    }
+}
+
+/// A nice macro to define structs that are built from json objects
+// #[macro_escape]
+// macro_rules! json_struct(
+//     ($name:ident, $($json_field:expr -> $field:ident: $ty:ty),+) => (
+//         // Useless because there can't be 2 expressions in a macro (#4375)
+//         // struct $name {
+//         //     $($field: $tt)+
+//         // }
+//
+//         // TODO : when #4375 is fixed, also implement FromStr
+//
+//         impl FromJson for $name {
+//             fn from_json(json: &Json) -> Result<$name, ValueError> {
+//                 Ok($name {
+//                     $($field: match(json.value(&~$json_field).convert()) {
+//                                 Ok(v) => v,
+//                                 Err(e) => return Err(e)
+//                             }),+
+//                 })
+//             }
+//         }
+//     );
+// )
 
 #[cfg(test)]
 mod tests {

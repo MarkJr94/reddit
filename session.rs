@@ -9,7 +9,7 @@ use extra::json::{Json, from_str};
 use util::json::{JsonLike};
 use util::REDDIT;
 
-#[deriving(Clone, Encodable, Decodable, Eq)]
+#[deriving(ToStr, Clone, Encodable, Decodable, Eq)]
 pub struct Session {
     default: bool,
     username: ~str,
@@ -19,7 +19,7 @@ pub struct Session {
     settings: ~SessionSettings
 }
 
-#[deriving(Clone, Encodable, Decodable, Eq)]
+#[deriving(ToStr, Clone, Encodable, Decodable, Eq)]
 pub struct SessionSettings {
     delete_pass: bool,
     auto_relogin: bool,
@@ -40,9 +40,6 @@ impl SessionSettings {
         }
     }
 }
-
-
-
 
 impl Session {
     pub fn default() -> Session {
@@ -89,10 +86,7 @@ impl Session {
 
         match request.read_response() {
             Ok(mut resp) => {
-                debug!("Status: {}", resp.status);
-
                 let body = from_utf8(resp.read_to_end());
-                debug!("{}", body);
 
                 match from_str(body) {
                     Err(jerror) => Err(jerror.to_str()),
@@ -127,7 +121,7 @@ impl Session {
         }
     }
 
-    pub fn me_json(&self) -> Result<Json, ~str> {
+    pub fn me(&self) -> Result<Json, ~str> {
         let url = url::from_str(format!("{}api/me.json", REDDIT)).unwrap();
 
         let mut request = ~RequestWriter::new(Get, url);
@@ -136,10 +130,7 @@ impl Session {
 
         match request.read_response() {
             Ok(mut resp) => {
-                debug!("Status: {}", resp.status);
-
                 let body = from_utf8(resp.read_to_end());
-                debug!("{}", body);
 
                 match from_str(body) {
                     Err(jerror) => Err(jerror.to_str()),
@@ -167,30 +158,24 @@ impl Session {
 
         match request.read_response() {
             Ok(mut resp) => {
-                debug!("Status: {}", resp.status);
-
                 let body = from_utf8(resp.read_to_end());
-                debug!("{}", body);
+                Debug!("Body of User.clear() response [{}]", body);
 
-                if !body.contains("all other sessions have been logged out") {
-                    Err(~"Failed to clear session.")
-                } else {
-                    match from_str(body) {
-                        Err(jerror) => Err(jerror.to_str()),
-                        Ok(json) => {
-                            let err = check_login(&json);
+                match from_str(body) {
+                    Err(jerror) => Err(jerror.to_str()),
+                    Ok(json) => {
+                        let err = check_login(&json);
 
-                            match err {
-                                Err(msg) => Err(msg),
-                                Ok(()) => {
-                                    let cookie = resp.headers.extensions.find(&~"Set-Cookie")
-                                        .expect("No cookie sent back")
-                                        .to_owned();
-                                    Ok(Session {
-                                        cookie: cookie,
-                                        ..self
-                                    })
-                                }
+                        match err {
+                            Err(msg) => Err(msg),
+                            Ok(()) => {
+                                let cookie = resp.headers.extensions.find(&~"Set-Cookie")
+                                    .expect("No cookie sent back")
+                                    .to_owned();
+                                Ok(Session {
+                                    cookie: cookie,
+                                    ..self
+                                })
                             }
                         }
                     }
@@ -204,8 +189,6 @@ impl Session {
 
 
 fn check_login(json: &Json) -> Result<(), ~str> {
-    debug!("Login Json return: {}", json.to_str());
-
     let err_list = json.value(&~"json").value(&~"errors").as_list().unwrap();
 
     if err_list.len() != 0 {
@@ -232,8 +215,6 @@ mod test {
 
         let v: ~[~str] = s.split_iter(' ').map(|s| s.trim().to_owned()).collect();
 
-        debug!(r"\{ user: [{}], pass: [{}]\}", v[0], v[1]);
-
         (v[0].clone(), v[1])
 
     }
@@ -245,18 +226,19 @@ mod test {
         let u = Session::new(user, pass, SessionSettings::default());
         let u = u.login().unwrap();
 
-        println(u.cookie);
+        Debug!("{}",u.to_str());
+
         assert!(u.cookie.len() > 0);
     }
 
     #[test]
-    fn test_get_me() {
+    fn test_me() {
         let (user, pass) = get_user_pass();
 
         let u = Session::new(user, pass, SessionSettings::default());
         let u = u.login().unwrap();
 
-        let user_info = u.me_json().unwrap().to_str();
+        let user_info = u.me().unwrap().to_str();
 
         assert!(user_info.len() > 0);
     }
@@ -270,7 +252,7 @@ mod test {
         let user = u.login().unwrap();
         let cookie = user.clear(pass, &dest).unwrap().cookie;
 
-        println(cookie);
+        Debug!("{}", cookie);
         assert!(cookie.len() > 0);
     }
 }

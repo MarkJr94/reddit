@@ -7,7 +7,7 @@ use extra::url;
 use extra::json::{Json, from_str};
 
 use util::json::{JsonLike};
-use util::REDDIT;
+use util::{REDDIT, check_errors};
 
 #[deriving(ToStr, Clone, Encodable, Decodable, Eq)]
 pub struct Session {
@@ -91,7 +91,7 @@ impl Session {
                 match from_str(body) {
                     Err(jerror) => Err(jerror.to_str()),
                     Ok(json) => {
-                        let err = check_login(&json);
+                        let err = check_errors(&json);
 
                         match err {
                             Err(msg) => Err(msg),
@@ -164,7 +164,7 @@ impl Session {
                 match from_str(body) {
                     Err(jerror) => Err(jerror.to_str()),
                     Ok(json) => {
-                        let err = check_login(&json);
+                        let err = check_errors(&json);
 
                         match err {
                             Err(msg) => Err(msg),
@@ -186,42 +186,15 @@ impl Session {
     }
 }
 
-
-
-fn check_login(json: &Json) -> Result<(), ~str> {
-    let err_list = json.value(&~"json").value(&~"errors").as_list().unwrap();
-
-    if err_list.len() != 0 {
-        Err(err_list.to_str())
-    } else {
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::{Session, SessionSettings};
-    use util::REDDIT;
+    use util::{REDDIT, get_secrets};
     use extra::url::from_str;
-
-    fn get_user_pass() -> (~str, ~str) {
-        use std::rt::io::{file, Open, Read};
-        use std::path::Path;
-        use std::str::from_utf8;
-
-        let mut stream = file::open(&Path::new("secrets.txt"), Open, Read)
-            .expect("Secret file couldn't be opened");
-        let s = from_utf8(stream.read_to_end());
-
-        let v: ~[~str] = s.split_iter(' ').map(|s| s.trim().to_owned()).collect();
-
-        (v[0].clone(), v[1])
-
-    }
 
     #[test]
     fn test_login() {
-        let (user, pass) = get_user_pass();
+        let (user, pass) = get_secrets();
 
         let u = Session::new(user, pass, SessionSettings::default());
         let u = u.login().unwrap();
@@ -233,7 +206,7 @@ mod test {
 
     #[test]
     fn test_me() {
-        let (user, pass) = get_user_pass();
+        let (user, pass) = get_secrets();
 
         let u = Session::new(user, pass, SessionSettings::default());
         let u = u.login().unwrap();
@@ -245,7 +218,7 @@ mod test {
 
     #[test]
     fn test_clear() {
-        let (user, pass) = get_user_pass();
+        let (user, pass) = get_secrets();
         let dest = from_str(REDDIT).unwrap();
 
         let u = Session::new(user, pass, SessionSettings::default());

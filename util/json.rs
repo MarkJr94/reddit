@@ -14,7 +14,7 @@
 
 #[macro_escape];
 
-use extra::json::{Json, Object, List, String, Boolean, Number};
+use extra::json::{Json, Object, List, String, Boolean, Number, Null};
 use std::fmt;
 
 /// This structure is returned when an unexpected value is uncountered in the json
@@ -211,8 +211,8 @@ impl<T: FromJson> FromJson for Option<T> {
     fn from_json(j: &Json) -> Result<Option<T>, ValueError> {
         match *j {
             Null => Ok(None),
-            otherwise => {
-                let t = FromJson::from_json(&otherwise);
+            ref otherwise => {
+                let t = FromJson::from_json(otherwise);
 
                 match t {
                     Ok(thing) => Ok(Some(thing)),
@@ -250,7 +250,7 @@ impl<T: FromJson> FromJson for Option<T> {
 #[cfg(test)]
 mod tests {
     use extra::json::{Json, from_str};
-    use super::{FromJson, ValueError, JsonLike};
+    use super::{FromJson, JsonLike};
     static DATA : &'static str = r###"{"count": 2, "results":[{"Name": "regalia", "Author": "madjar", "ID": 42}]}"###;
 
     #[test]

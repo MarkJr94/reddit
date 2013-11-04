@@ -180,7 +180,7 @@ impl FromJson for f64 {
 
 impl FromJson for f32 {
     fn from_json(j: &Json) -> Result<f32, ValueError> {
-        j.to_num().map_move(|n| n as f32)
+        j.to_num().map(|n| n as f32)
     }
 }
 
@@ -197,7 +197,7 @@ impl FromJson for int {
 
 impl FromJson for ~str {
     fn from_json(j: &Json) -> Result<~str, ValueError> {
-        do j.as_str().map_move() |s| {s.clone()}
+        do j.as_str().map() |s| {s.clone()}
     }
 }
 

@@ -1,13 +1,10 @@
-use http::client::RequestWriter;
-use http::method::{Get, Post};
-use http::headers::content_type::MediaType;
 use std::str::from_utf8;
-use std::rt::io::{Reader,Writer};
+use std::rt::io::{Reader};
 use extra::url;
 use extra::json::{Json, from_str};
 
 use util::json::{JsonLike};
-use util::{REDDIT, check_errors};
+use util::{REDDIT, check_errors, get_resp};
 
 #[deriving(ToStr, Clone, Encodable, Decodable, Eq)]
 pub struct Session {
@@ -75,71 +72,41 @@ impl Session {
             self.username,
             *self.password.as_ref().expect("No password!"));
 
-        let mut request = ~RequestWriter::new(Post, url);
+        get_resp(url, Some(jpostdata.as_bytes()), Some(&self)).and_then(|mut resp| {
+            let body = from_utf8(resp.read_to_end());
 
-        request.headers.content_length = Some(jpostdata.len());
-        request.headers.content_type = Some(MediaType(~"application",
-                                                        ~"x-www-form-urlencoded"
-                                                        , ~[]));
+            from_str(body).or_else(|e| Err(e.to_str()))
+                .and_then(|json| {
+                    check_errors(&json).and_then(|_| {
+                        let cookie = resp.headers.extensions.find(&~"Set-Cookie")
+                            .expect("No cookie sent back")
+                            .to_owned();
 
-        request.write(jpostdata.as_bytes());
+                        let mhash = json.value(&~"json").value(&~"data")
+                            .value(&~"modhash")
+                            .expect("No modhash found!")
+                            .as_str()
+                            .unwrap()
+                            .to_owned();
 
-        match request.read_response() {
-            Ok(mut resp) => {
-                let body = from_utf8(resp.read_to_end());
-
-                match from_str(body) {
-                    Err(jerror) => Err(jerror.to_str()),
-                    Ok(json) => {
-                        let err = check_errors(&json);
-
-                        match err {
-                            Err(msg) => Err(msg),
-                            Ok(()) => {
-                                let cookie = resp.headers.extensions.find(&~"Set-Cookie")
-                                    .expect("No cookie sent back")
-                                    .to_owned();
-
-                                let mhash = json.value(&~"json").value(&~"data")
-                                    .value(&~"modhash")
-                                    .expect("No modhash found!")
-                                    .as_str()
-                                    .unwrap()
-                                    .to_owned();
-                                Ok(Session {
-                                    cookie: cookie,
-                                    modhash: mhash,
-                                    ..self
-                                })
-
-                            }
-                        }
-                    }
-                }
-            }
-            Err(_) => Err(~"Request failed")
-        }
+                        Ok(Session {
+                            cookie: cookie,
+                            modhash: mhash,
+                            ..self.clone()
+                        })
+                    })
+                })
+        })
     }
 
     pub fn me(&self) -> Result<Json, ~str> {
         let url = url::from_str(format!("{}api/me.json", REDDIT)).unwrap();
 
-        let mut request = ~RequestWriter::new(Get, url);
+        get_resp(url, None, Some(self)).and_then(|mut resp_data| {
+            let body: ~str = from_utf8(resp_data.read_to_end());
 
-        request.headers.extensions.insert(~"Cookie", self.cookie.clone());
-
-        match request.read_response() {
-            Ok(mut resp) => {
-                let body = from_utf8(resp.read_to_end());
-
-                match from_str(body) {
-                    Err(jerror) => Err(jerror.to_str()),
-                    Ok(json) => Ok(json),
-                }
-            }
-
-            Err(_) => Err(~"Request not successful"),
-        }
+            from_str(body).or_else(|e| Err(e.to_str()))
+        })
     }
 
     pub fn clear(self, pass: &str, dest: &url::Url) -> Result<Session, ~str> {
@@ -148,40 +115,21 @@ impl Session {
         let jpostdata = format!(r"dest={0}&curpass={1}&uh={2}&api_type=json",
             dest.to_str(), pass, self.modhash);
 
-        let mut request = ~RequestWriter::new(Post, url);
-        request.headers.extensions.insert(~"Cookie", self.cookie.clone());
-        request.headers.content_length = Some(jpostdata.len());
-        request.headers.content_type = Some(MediaType(~"application",
-                                                        ~"x-www-form-urlencoded"
-                                                        , ~[]));
-        request.write(jpostdata.as_bytes());
 
-        match request.read_response() {
-            Ok(mut resp) => {
-                let body = from_utf8(resp.read_to_end());
-                Debug!("Body of User.clear() response [{}]", body);
+        do get_resp(url, Some(jpostdata.as_bytes()), Some(&self)).and_then |mut resp| {
+            from_str(from_utf8(resp.read_to_end()))
+                .or_else(|e| Err(e.to_str()) )
+                .and_then(|json| {
+                    Debug!(json.to_str());
 
-                match from_str(body) {
-                    Err(jerror) => Err(jerror.to_str()),
-                    Ok(json) => {
-                        let err = check_errors(&json);
-
-                        match err {
-                            Err(msg) => Err(msg),
-                            Ok(()) => {
-                                let cookie = resp.headers.extensions.find(&~"Set-Cookie")
+                    check_errors(&json).and_then(|_| {
+                        let cookie = resp.headers.extensions.find(&~"Set-Cookie")
                                     .expect("No cookie sent back")
                                     .to_owned();
-                                Ok(Session {
-                                    cookie: cookie,
-                                    ..self
-                                })
-                            }
-                        }
-                    }
-                }
-            }
-            Err(_) => Err(~"Request failed")
+
+                        Ok(Session { cookie: cookie, ..self.clone()})
+                    })
+            })
         }
     }
 }

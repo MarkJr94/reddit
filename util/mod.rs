@@ -5,9 +5,10 @@ use std::rt::io::{Reader, Writer};
 use extra::json::Json;
 use extra::url::{Url};
 
-use http::client::RequestWriter;
+use http::client::{RequestWriter, ResponseReader};
 use http::method::{Get, Post};
 use http::headers::content_type::MediaType;
+use std::rt::io::net::tcp::TcpStream;
 
 use session::{Session};
 
@@ -43,7 +44,6 @@ pub fn check_errors(json: &Json) -> Result<(), ~str> {
     }
 }
 
-
 pub fn get_secrets() -> (~str, ~str) {
     use std::rt::io::{file, Open, Reader};
     use std::path::Path;
@@ -60,13 +60,14 @@ pub fn get_secrets() -> (~str, ~str) {
     (v[0].clone(), v[1])
 }
 
-pub fn get_resp(url: Url, post_data: Option<~str>, s: Option<&Session>) -> Result<~[u8], ~str> {
-    let method = match post_data {
-        Some(_) => Post,
-        None => Get
+pub fn get_resp(url: Url, post_data: Option<&[u8]>, s: Option<&Session>)
+-> Result<ResponseReader<TcpStream>, ~str> {
+    let mut req = if post_data.is_some() {
+        ~RequestWriter::new(Post, url)
+    } else {
+        ~RequestWriter::new(Get, url)
     };
 
-    let mut req = ~RequestWriter::new(method, url);
     req.headers.user_agent = Some(UASTR.to_owned());
 
     match s {
@@ -84,13 +85,13 @@ pub fn get_resp(url: Url, post_data: Option<~str>, s: Option<&Session>) -> Resul
                 ~"x-www-form-urlencoded"
                 , ~[]));
 
-            req.write(data.as_bytes());
+            req.write(data);
         }
     }
 
     match req.read_response() {
-        Ok(mut resp) => {
-            Ok(resp.read_to_end())
+        Ok(resp) => {
+            Ok(resp)
         }
         Err(_) => {
             Err(~"Bad request")

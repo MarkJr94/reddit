@@ -8,6 +8,7 @@
 
 #[comment = "Rust binding to Reddit API"];
 #[license = "LGPLv3"];
+#[crate_type = "lib"];
 
 extern mod extra;
 extern mod http;

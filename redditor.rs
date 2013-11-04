@@ -1,3 +1,5 @@
+pub use self::rd::Redditor;
+
 use http::client::RequestWriter;
 use http::method::{Get};
 use std::str::from_utf8;
@@ -8,20 +10,7 @@ use extra::json::{from_str};
 use util::json::{JsonLike, FromJson};
 use util::REDDIT;
 
-#[deriving(ToStr, Clone, Encodable, Decodable, Eq)]
-pub struct Redditor {
-    id: ~str,
-    name: ~str,
-    link_karma: int,
-    comment_karma: int,
-    created_utc: f64,
-    is_gold: bool,
-    is_mod: bool,
-    has_mail: Option<bool>,
-    has_mod_mail: Option<bool>
-}
-
-json_struct!(Redditor,
+json_struct2!(rd, Redditor,
     "id" -> id: ~str,
     "name" -> name: ~str,
     "link_karma" -> link_karma: int,

@@ -1,12 +1,28 @@
 #[macro_escape];
 
 // A nice macro to define structs that are built from json objects
+macro_rules! from_json(
+    ($name:ident, $($field:ident), +) => (
+        impl ::util::json::FromJson for $name {
+            fn from_json(json: &::extra::json::Json) -> Result<$name, ::util::json::ValueError> {
+                Ok($name {
+                    $($field: match json.value(&stringify!($field).to_owned()).convert() {
+                        Ok(v) => v,
+                        Err(e) => return Err(e)
+                    }),+
+                })
+            }
+        }
+    )
+)
+
+// A nice macro to define structs that are built from json objects
 macro_rules! json_struct(
     ($name:ident, $($json_field:expr -> $field:ident: $ty:ty), +) => (
         impl ::util::json::FromJson for $name {
             fn from_json(json: &::extra::json::Json) -> Result<$name, ::util::json::ValueError> {
                 Ok($name {
-                    $($field: match(json.value(&~$json_field).convert()) {
+                    $($field: match json.value(&~$json_field).convert() {
                         Ok(v) => v,
                         Err(e) => return Err(e)
                     }),+

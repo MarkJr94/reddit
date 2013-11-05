@@ -95,7 +95,7 @@ impl Subreddit {
             }
         }
 
-        let mut raw_url = ~"http://reddit.com/";
+        let mut raw_url = ~"http://www.reddit.com/";
 
         match sub {
             Some(s) => {
@@ -122,12 +122,16 @@ impl Subreddit {
             }
         }
 
+        Debug!("Fetching sorted posts at url: {}", raw_url);
+
         let url = url::from_str(raw_url).unwrap();
 
-        get_resp(url, None, None).and_then(|mut resp| {
-            let body = str::from_utf8(resp.read_to_end());
+        get_resp(url, None, None).or_else(|e| {println(e); Err(e)}).and_then(|mut resp| {
+            let bytes = resp.read_to_end();
 
-            json::from_str(body).or_else(|e| Err(e.to_str())).and_then(|json| {
+            let body = str::from_utf8(bytes);
+
+            json::from_str(body).or_else(|e| {println(e.to_str()); Err(e.to_str())} ).and_then(|json| {
                 let mut dec = json::Decoder(json);
 
                 let res_data: Response = Decodable::decode(&mut dec);
@@ -145,14 +149,14 @@ mod test {
     fn test_about() {
         let redditor = about_subreddit("programming").unwrap();
 
-//         Debug!("{}", redditor.to_str());
+        Debug!("{}", redditor.to_str());
     }
 
     #[test]
     fn test_front_page() {
         let front_posts =  Subreddit::front_page().unwrap();
 
-//         Debug!("{}", front_posts.to_str());
+        Debug!("{}", front_posts.to_str());
     }
 
     #[test]

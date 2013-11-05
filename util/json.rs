@@ -223,30 +223,6 @@ impl<T: FromJson> FromJson for Option<T> {
     }
 }
 
-/// A nice macro to define structs that are built from json objects
-// #[macro_escape]
-// macro_rules! json_struct(
-//     ($name:ident, $($json_field:expr -> $field:ident: $ty:ty),+) => (
-//         // Useless because there can't be 2 expressions in a macro (#4375)
-//         // struct $name {
-//         //     $($field: $tt)+
-//         // }
-//
-//         // TODO : when #4375 is fixed, also implement FromStr
-//
-//         impl FromJson for $name {
-//             fn from_json(json: &Json) -> Result<$name, ValueError> {
-//                 Ok($name {
-//                     $($field: match(json.value(&~$json_field).convert()) {
-//                                 Ok(v) => v,
-//                                 Err(e) => return Err(e)
-//                             }),+
-//                 })
-//             }
-//         }
-//     );
-// )
-
 #[cfg(test)]
 mod tests {
     use extra::json::{Json, from_str};

@@ -6,7 +6,7 @@ http_lib_path=$(http)/build
 LINK_OPTS=-L$(http_lib_path)
 
 all:
-	rustc lib.rs --opt-level 3 --cfg debug $(LINK_OPTS) -o reddit
+	rustc lib.rs -O $(LINK_OPTS) -o reddit
 
 test:
 	rustc lib.rs --test --cfg debug $(LINK_OPTS) -o reddittest

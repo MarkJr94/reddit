@@ -45,12 +45,11 @@ pub fn check_errors(json: &Json) -> Result<(), ~str> {
 }
 
 pub fn get_secrets() -> (~str, ~str) {
-    use std::rt::io::{file, Open, Reader};
+    use std::rt::io::{fs, Open, Reader, Read};
     use std::path::Path;
-    use std::rt::io::file::FileInfo;
     use std::str::from_utf8;
 
-    let mut reader : file::FileReader = Path::new("secrets.txt").open_reader(Open)
+    let mut reader = fs::File::open_mode(&Path::new("secrets.txt"), Open, Read)
         .expect("Secret file couldn't be opened");
 
     let s: ~str = from_utf8(reader.read_to_end());

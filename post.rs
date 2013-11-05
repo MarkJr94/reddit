@@ -1,10 +1,5 @@
-use std::str::from_utf8;
-use std::rt::io::Reader;
-use extra::url;
-use extra::json::from_str;
-
-use util::{REDDIT, get_resp};
-use util::json::{JsonLike, FromJson};
+use util::{REDDIT};
+use util::json::{JsonLike};
 
 #[deriving(ToStr, Clone, Encodable, Decodable, Eq)]
 pub struct Post {
@@ -59,7 +54,7 @@ from_json!(Post,
 
 impl Post {
     pub fn full_permalink(&self) -> ~str {
-        ~"http://reddit.com" + self.permalink
+        REDDIT.to_owned() + self.permalink
     }
 }
 

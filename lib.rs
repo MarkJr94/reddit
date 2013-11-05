@@ -24,22 +24,12 @@ pub mod post;
 mod util;
 
 fn main() {
-    use redditor::{about_redditor};
-    use extra::json::{Encoder};
-    use extra::serialize::Encodable;
-    use std::rt::io;
+    use post::{Top, AllTime};
+    use subreddit::{Subreddit, about_subreddit};
 
-    let pd = about_redditor("pudukheba");
+    let sub = about_subreddit("programming").unwrap();
 
-    match pd {
-        Err(msg) => fail!(msg),
-        Ok(pudu) => {
-            println(pudu.to_str());
-            let out = @mut io::stdout() as @mut io::Writer;
-            let mut enc = Encoder(out);
+    let posts = Subreddit::sorted_posts(Some(sub), Top, AllTime).unwrap();
 
-            pudu.encode(&mut enc);
-            println("");
-        }
-    }
+    println(posts.to_str());
 }

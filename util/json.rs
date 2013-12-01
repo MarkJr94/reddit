@@ -109,21 +109,21 @@ impl<'self> JsonLike<'self> for &'self Json {
     }
 
     fn value(self, key: &~str) -> Result<&'self Json, ValueError> {
-        do self.as_obj().and_then |o| {
+        self.as_obj().and_then( |o| {
             match (o.find(key)) {
                 Some(v) => Ok(v),
                 None => error(self, format!("has no key \"{}\"", *key))
             }
-        }
+        })
     }
 
     fn item(self, index: uint) -> Result<&'self Json, ValueError>{
-        do self.as_list().and_then |l| {
+        self.as_list().and_then(|l| {
             match(l.get_opt(index)) {
                 Some(v) => Ok(v),
                 None => error(self, format!("has no index {}", index))
             }
-        }
+        })
     }
 
     fn convert<T: FromJson>(self) -> Result<T, ValueError> {
@@ -135,35 +135,35 @@ impl<'self> JsonLike<'self> for &'self Json {
 // there is one
 impl<'self> JsonLike<'self> for Result<&'self Json, ValueError> {
     fn as_str(self) -> Result<&'self ~str, ValueError> {
-        do self.and_then |j| {j.as_str()}
+        self.and_then( |j| {j.as_str()} )
     }
 
     fn as_obj(self) -> Result<&'self ~Object, ValueError> {
-        do self.and_then |j| {j.as_obj()}
+        self.and_then( |j| {j.as_obj()} )
     }
 
     fn as_list(self) -> Result<&'self List, ValueError> {
-        do self.and_then |j| {j.as_list()}
+        self.and_then( |j| {j.as_list()} )
     }
 
      fn to_bool(self) -> Result<bool, ValueError> {
-        do self.and_then |j| {j.to_bool()}
+        self.and_then( |j| {j.to_bool()} )
     }
 
     fn to_num(self) -> Result<f64, ValueError> {
-        do self.and_then |j| {j.to_num()}
+        self.and_then( |j| {j.to_num()} )
     }
 
     fn value(self, key: &~str) -> Result<&'self Json, ValueError> {
-        do self.and_then |j| {j.value(key)}
+        self.and_then( |j| {j.value(key)} )
     }
 
     fn item(self, index: uint) -> Result<&'self Json, ValueError>{
-        do self.and_then |j| {j.item(index)}
+        self.and_then( |j| {j.item(index)} )
     }
 
     fn convert<T: FromJson>(self) -> Result<T, ValueError> {
-        do self.and_then |j| {j.convert()}
+        self.and_then( |j| {j.convert()} )
     }
 }
 
@@ -186,18 +186,18 @@ impl FromJson for f32 {
 
 impl FromJson for int {
     fn from_json(j: &Json) -> Result<int, ValueError> {
-        do j.to_num().and_then() |i| {
+        j.to_num().and_then( |i| {
             match(i.to_int()) {
                 Some(v) => Ok(v),
                 None => error(j, ~"is not an integer")
             }
-        }
+        })
     }
 }
 
 impl FromJson for ~str {
     fn from_json(j: &Json) -> Result<~str, ValueError> {
-        do j.as_str().map() |s| {s.clone()}
+        j.as_str().map( |s| {s.clone()} )
     }
 }
 

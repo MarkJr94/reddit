@@ -1,5 +1,4 @@
 use std::str::from_utf8;
-use std::rt::io::{Reader};
 use extra::url;
 use extra::json::{Json, from_str};
 
@@ -116,7 +115,7 @@ impl Session {
             dest.to_str(), pass, self.modhash);
 
 
-        do get_resp(url, Some(jpostdata.as_bytes()), Some(&self)).and_then |mut resp| {
+        get_resp(url, Some(jpostdata.as_bytes()), Some(&self)).and_then(|mut resp| {
             from_str(from_utf8(resp.read_to_end()))
                 .or_else(|e| Err(e.to_str()) )
                 .and_then(|json| {
@@ -130,7 +129,7 @@ impl Session {
                         Ok(Session { cookie: cookie, ..self.clone()})
                     })
             })
-        }
+        })
     }
 }
 

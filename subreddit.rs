@@ -1,5 +1,4 @@
 use std::str;
-use std::rt::io::Reader;
 use extra::url;
 use extra::json;
 

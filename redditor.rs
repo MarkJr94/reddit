@@ -1,9 +1,8 @@
 use http::client::RequestWriter;
 use http::method::{Get};
-use std::str::from_utf8;
-use std::rt::io::{Reader};
+use std::str;
 use extra::url;
-use extra::json::{from_str};
+use extra::json;
 
 use util::json::{JsonLike, FromJson};
 use util::REDDIT;
@@ -35,20 +34,20 @@ from_json!(Redditor,
 pub fn about_redditor(username: &str) -> Result<Redditor, ~str> {
     let url = url::from_str(format!("{0}user/{1}/about.json", REDDIT, username)).unwrap();
 
-    let req = ~RequestWriter::new(Get, url);
+    let req = RequestWriter::new(Get, url);
 
-    struct Response {
-        data: Redditor
-    }
+//     struct Response {
+//         data: Redditor
+//     }
 
-    json_struct!(Response,
+    json_struct2!(Response,
         "data" -> data: Redditor)
 
     match req.read_response() {
         Ok(mut resp) => {
-            let body = from_utf8(resp.read_to_end());
+            let body = str::from_utf8(resp.read_to_end());
 
-            match from_str(body) {
+            match json::from_str(body) {
                 Err(jerror) => Err(jerror.to_str()),
                 Ok(json) => {
                     Debug!(json.value(&~"data").unwrap().to_str());

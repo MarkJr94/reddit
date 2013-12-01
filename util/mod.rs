@@ -1,14 +1,12 @@
 use self::json::JsonLike;
 
-use std::rt::io::{Reader, Writer};
-
 use extra::json::Json;
 use extra::url::{Url};
 
 use http::client::{RequestWriter, ResponseReader};
 use http::method::{Get, Post};
 use http::headers::content_type::MediaType;
-use std::rt::io::net::tcp::TcpStream;
+use std::io::net::tcp::TcpStream;
 
 use session::{Session};
 
@@ -45,16 +43,16 @@ pub fn check_errors(json: &Json) -> Result<(), ~str> {
 }
 
 pub fn get_secrets() -> (~str, ~str) {
-    use std::rt::io::{fs, Open, Reader, Read};
+    use std::io::{fs, Open, Reader, Read};
     use std::path::Path;
     use std::str::from_utf8;
 
-    let mut reader = fs::File::open_mode(&Path::new("secrets.txt"), Open, Read)
+    let mut reader = fs::File::open_mode(&Path::init("secrets.txt"), Open, Read)
         .expect("Secret file couldn't be opened");
 
     let s: ~str = from_utf8(reader.read_to_end());
 
-    let v: ~[~str] = s.split_iter(' ').map(|s| s.trim().to_owned()).collect();
+    let v: ~[~str] = s.split(' ').map(|s| s.trim().to_owned()).collect();
 
     (v[0].clone(), v[1])
 }

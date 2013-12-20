@@ -20,6 +20,7 @@ pub mod session;
 pub mod redditor;
 pub mod subreddit;
 pub mod post;
+pub mod objects;
 
 mod util;
 

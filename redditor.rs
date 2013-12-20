@@ -36,11 +36,11 @@ pub fn about_redditor(username: &str) -> Result<Redditor, ~str> {
 
     let req = RequestWriter::new(Get, url);
 
-//     struct Response {
-//         data: Redditor
-//     }
+    struct Response {
+        data: Redditor
+    }
 
-    json_struct2!(Response,
+    json_struct!(Response,
         "data" -> data: Redditor)
 
     match req.read_response() {

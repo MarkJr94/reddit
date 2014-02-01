@@ -1,3 +1,10 @@
+use std::str::from_utf8;
+
+use extra::json::Json;
+use extra::url;
+
+use util::{REDDIT, get_resp, check_errors};
+use util::json::{JsonLike, FromJson};
 
 json_struct2!(Account,
     "comment_karma" -> comment_karma: int,
@@ -20,7 +27,6 @@ static DEFAULT: Account = Account {
     created: 0f64,
     created_utc: 0f64,
     has_mail: None,
-    has_mail: None,
     has_verified_email: false,
     id: ~"",
     is_friend: false,
@@ -36,16 +42,16 @@ impl Account {
         DEFAULT.clone()
     }
 
-    pub fn login(username: &str, password: &str)) -> Result<(Account, ~str), ~str> {
+    pub fn login(username: &str, password: &str) -> Result<(Account, ~str), ~str> {
 
-        let url = url::from_str(format!("{0}api/login/{1}", REDDIT, self.username)).unwrap();
+        let url = url::from_str(format!("{0}api/login/{1}", REDDIT, username)).unwrap();
 
         let jpostdata = format!(r"user={0}&passwd={1}&rem=true&api_type=json",
             username,
             password);
 
-        get_resp(url, Some(jpostdata.as_bytes()), Some(&self)).and_then(|mut resp| {
-            let body = from_utf8(resp.read_to_end());
+        get_resp(url, Some(jpostdata.as_bytes()), /*Some(&self)*/ None).and_then(|mut resp| {
+            let body = from_utf8(resp.read_to_end()).expect("Non-UTF8 response");
 
             from_str(body).or_else(|e| Err(e.to_str()))
                 .and_then(|json| {
@@ -61,7 +67,7 @@ impl Account {
                             .unwrap()
                             .to_owned();
 
-                        Ok((from_json(json.value(&~"json").value(&~"data")
+                        Ok((FromJson::from_json(json.value(&~"json").value(&~"data")
                             .expect("No Data found!"))), cookie)
                     })
                 })

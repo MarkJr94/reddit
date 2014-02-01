@@ -42,15 +42,16 @@ pub fn check_errors(json: &Json) -> Result<(), ~str> {
     }
 }
 
+#[cfg(test)]
 pub fn get_secrets() -> (~str, ~str) {
     use std::io::{fs, Open, Reader, Read};
     use std::path::Path;
-    use std::str::from_utf8;
+    use std::str::from_utf8_owned;
 
-    let mut reader = fs::File::open_mode(&Path::init("secrets.txt"), Open, Read)
+    let mut reader = fs::File::open_mode(&Path::new("secrets.txt"), Open, Read)
         .expect("Secret file couldn't be opened");
 
-    let s: ~str = from_utf8(reader.read_to_end());
+    let s = from_utf8_owned(reader.read_to_end()).expect("Non-UTF8 Secrets!");
 
     let v: ~[~str] = s.split(' ').map(|s| s.trim().to_owned()).collect();
 

@@ -1,6 +1,8 @@
-use std::str;
+use std::str::from_utf8_owned;
 use extra::url;
+use extra::json::{Decoder};
 use extra::json;
+use std::io::println;
 
 use post::{Post, PopularitySort, AgeSort};
 use util::{REDDIT, get_resp};
@@ -36,7 +38,7 @@ pub fn about_subreddit(sr: &str) -> Result<Subreddit, ~str> {
     let url = url::from_str(format!("{0}r/{1}/about.json", REDDIT, sr)).unwrap();
 
     get_resp(url, None, None).and_then(|mut resp| {
-        let body = str::from_utf8(resp.read_to_end());
+        let body = from_utf8_owned(resp.read_to_end()).expect("Non-UTF8 response");
 
         json::from_str(body).or_else(|e| Err(e.to_str())).and_then(|json| {
             json.value(&~"data").or_else(|e| Err(e.to_str())).and_then(|sr_json| {
@@ -68,10 +70,10 @@ impl Subreddit {
         let url = url::from_str("http://www.reddit.com/.json").unwrap();
 
         get_resp(url, None, None).and_then(|mut resp| {
-            let body = str::from_utf8(resp.read_to_end());
+            let body = from_utf8_owned(resp.read_to_end()).expect("Non-UTF8 response");
 
             json::from_str(body).or_else(|e| Err(e.to_str())).and_then(|json|{
-                let mut dec = json::Decoder(json);
+                let mut dec = json::Decoder::new(json);
 
                 let res_data: Response = Decodable::decode(&mut dec);
 
@@ -128,10 +130,10 @@ impl Subreddit {
         get_resp(url, None, None).or_else(|e| {println(e); Err(e)}).and_then(|mut resp| {
             let bytes = resp.read_to_end();
 
-            let body = str::from_utf8(bytes);
+            let body = from_utf8_owned(bytes).expect("Non-UTF8 response");
 
             json::from_str(body).or_else(|e| {println(e.to_str()); Err(e.to_str())} ).and_then(|json| {
-                let mut dec = json::Decoder(json);
+                let mut dec = json::Decoder::new(json);
 
                 let res_data: Response = Decodable::decode(&mut dec);
                 Ok(res_data.data.children.move_iter().map(|c| c.data.unwrap()).collect())

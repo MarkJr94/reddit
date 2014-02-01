@@ -6,10 +6,13 @@ http_lib_path=$(http)/build
 LINK_OPTS=-L$(http_lib_path)
 
 all:
-	rustc lib.rs -O $(LINK_OPTS) -o reddit
+	rustc lib.rs -O $(LINK_OPTS)
 
 test:
 	rustc lib.rs --test --cfg debug $(LINK_OPTS) -o reddittest
+
+exec:
+	rustc main.rs -O $(LINK_OPTS)
 
 doc:
 	mkdir -p $(doc_path)

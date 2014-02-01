@@ -1,4 +1,4 @@
-use std::str::from_utf8;
+use std::str::{from_utf8_owned};
 use extra::url;
 use extra::json::{Json, from_str};
 
@@ -72,18 +72,18 @@ impl Session {
             *self.password.as_ref().expect("No password!"));
 
         get_resp(url, Some(jpostdata.as_bytes()), Some(&self)).and_then(|mut resp| {
-            let body = from_utf8(resp.read_to_end());
+            let body = from_utf8_owned(resp.read_to_end()).expect("Non-UTF8 response");
 
             from_str(body).or_else(|e| Err(e.to_str()))
                 .and_then(|json| {
                     check_errors(&json).and_then(|_| {
                         let cookie = resp.headers.extensions.find(&~"Set-Cookie")
-                            .expect("No cookie sent back")
+                            .unwrap()
                             .to_owned();
 
                         let mhash = json.value(&~"json").value(&~"data")
                             .value(&~"modhash")
-                            .expect("No modhash found!")
+                            .unwrap()
                             .as_str()
                             .unwrap()
                             .to_owned();
@@ -101,8 +101,8 @@ impl Session {
     pub fn me(&self) -> Result<Json, ~str> {
         let url = url::from_str(format!("{}api/me.json", REDDIT)).unwrap();
 
-        get_resp(url, None, Some(self)).and_then(|mut resp_data| {
-            let body: ~str = from_utf8(resp_data.read_to_end());
+        get_resp(url, None, Some(self)).and_then(|mut resp| {
+            let body = from_utf8_owned(resp.read_to_end()).expect("Non-UTF8 response");
 
             from_str(body).or_else(|e| Err(e.to_str()))
         })
@@ -116,7 +116,9 @@ impl Session {
 
 
         get_resp(url, Some(jpostdata.as_bytes()), Some(&self)).and_then(|mut resp| {
-            from_str(from_utf8(resp.read_to_end()))
+            let body = from_utf8_owned(resp.read_to_end()).expect("Non-UTF8 response");
+
+            from_str(body)
                 .or_else(|e| Err(e.to_str()) )
                 .and_then(|json| {
                     Debug!(json.to_str());
